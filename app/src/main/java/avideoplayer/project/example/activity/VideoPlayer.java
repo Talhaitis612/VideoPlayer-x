@@ -18,6 +18,7 @@ import android.os.Handler;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.Display;
+import android.view.GestureDetector;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -37,17 +38,17 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.VideoView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.view.GestureDetectorCompat;
-
 import java.util.ArrayList;
 
 import avideoplayer.project.example.R;
 import avideoplayer.project.example.adapter.VideoFolderAdapter;
 
-public class VideoPlayer extends AppCompatActivity implements View.OnClickListener, ScaleGestureDetector.OnScaleGestureListener, View.OnTouchListener {
+public class VideoPlayer extends AppCompatActivity implements View.OnClickListener, ScaleGestureDetector.OnScaleGestureListener,View.OnTouchListener{
     private static final String KEY_POSITION = "KEY_POSITION";
     private static final float MAX_ZOOM = 5.0f;
     private static final float MIN_ZOOM = 1.0f;
@@ -119,6 +120,8 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
     /* access modifiers changed from: private */
     public int wait = 0;
     RelativeLayout zoomLayout;
+
+
 
     private enum Mode {
         NONE,
@@ -196,8 +199,8 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         this.five.setOnClickListener(this);
         this.rotation.setOnClickListener(this);
         this.zoomLayout.setOnTouchListener(this);
+        this.gestureDetector = new GestureDetectorCompat(getApplicationContext(), new GestureDetector());
         this.scaleDetector = new ScaleGestureDetector(getApplicationContext(), this);
-//        gestureDetector = new GestureDetectorCompat(getApplicationContext(),GestureDetectorCompat);
         this.rotateIn = AnimationUtils.loadAnimation(this, R.anim.rotate_in);
         this.rotateOut = AnimationUtils.loadAnimation(this, R.anim.rotate_out);
         this.playPauseAnim = AnimationUtils.loadAnimation(this, R.anim.fade);
@@ -269,6 +272,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         ((RadioButton) dialog.findViewById(R.id.slow_speed_one)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
+                MediaPlayer mediaPlayer = new MediaPlayer();
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(0.5f));
                 dialog.dismiss();
             }
@@ -276,6 +280,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         ((RadioButton) dialog.findViewById(R.id.slow_speed_two)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
+                MediaPlayer mediaPlayer = new MediaPlayer();
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(0.75f));
                 dialog.dismiss();
             }
@@ -283,6 +288,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         ((RadioButton) dialog.findViewById(R.id.speed_normal)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
+                MediaPlayer mediaPlayer = new MediaPlayer();
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(1.0f));
                 dialog.dismiss();
             }
@@ -290,6 +296,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         ((RadioButton) dialog.findViewById(R.id.fast_speed_one)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
+                MediaPlayer mediaPlayer = new MediaPlayer();
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(1.25f));
                 dialog.dismiss();
             }
@@ -297,6 +304,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         ((RadioButton) dialog.findViewById(R.id.fast_speed_two)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
+                MediaPlayer mediaPlayer = new MediaPlayer();
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(1.75f));
                 dialog.dismiss();
             }
@@ -327,9 +335,11 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
             }
         }).setPositiveButton((CharSequence) "Ok", (DialogInterface.OnClickListener) new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
-                mediaPlayer.getSelectedTrack(which);
+                if (Build.VERSION.SDK_INT >= 21) {
+                    mediaPlayer.getSelectedTrack(which);
+                }
                 mediaPlayer.start();
-                Toast.makeText(VideoPlayer.this, "we are working on that :)", Toast.LENGTH_SHORT).show();
+                Toast.makeText(VideoPlayer.this, "we are working on that :)", Toast.LENGTH_LONG).show();
                 dialog.dismiss();
             }
         }).setNegativeButton((CharSequence) "Cancel", (DialogInterface.OnClickListener) new DialogInterface.OnClickListener() {
@@ -452,10 +462,9 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         int minutes = x2 % 60;
         int hours = (x2 / 60) % 24;
         if (hours != 0) {
-//            return String.format(TimeModel.ZERO_LEADING_NUMBER_FORMAT, new Object[]{Integer.valueOf(hours)}) + ":" + String.format(TimeModel.ZERO_LEADING_NUMBER_FORMAT, new Object[]{Integer.valueOf(minutes)}) + ":" + String.format(TimeModel.ZERO_LEADING_NUMBER_FORMAT, new Object[]{Integer.valueOf(seconds)});
+            return String.format("%02d", hours) + ":" + String.format("%02d", minutes) + ":" + String.format("%02d", seconds);
         }
-//        return String.format(TimeModel.ZERO_LEADING_NUMBER_FORMAT, new Object[]{Integer.valueOf(minutes)}) + ":" + String.format(TimeModel.ZERO_LEADING_NUMBER_FORMAT, new Object[]{Integer.valueOf(seconds)});
-       return null;
+         return String.format("%02d", minutes) + ":" + String.format("%02d", seconds);
     }
 
     public void onClick(View v) {
@@ -574,12 +583,12 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         dialog.show();
     }
 
-    public void onConfigurationChanged(Configuration newConfig) {
+    public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
         if (newConfig.orientation == 2) {
             this.two.setVisibility(View.VISIBLE);
         } else if (newConfig.orientation == 1) {
-            this.two.setVisibility(View.GONE);
+            this.two.setVisibility(View.VISIBLE);
         }
     }
 
@@ -595,8 +604,12 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
             View decorView = window.getDecorView();
             if (decorView != null) {
                 int uiOptions = decorView.getSystemUiVisibility();
-                uiOptions |= 1;
-                uiOptions |= 2;
+                if (Build.VERSION.SDK_INT >= 14) {
+                    uiOptions |= 1;
+                }
+                if (Build.VERSION.SDK_INT >= 16) {
+                    uiOptions |= 2;
+                }
                 if (Build.VERSION.SDK_INT >= 19) {
                     uiOptions |= 4096;
                 }
@@ -623,9 +636,15 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
             View decorView = window.getDecorView();
             if (decorView != null) {
                 int uiOptions = decorView.getSystemUiVisibility();
-                uiOptions &= -2;
-                uiOptions &= -3;
-                uiOptions &= -4097;
+                if (Build.VERSION.SDK_INT >= 14) {
+                    uiOptions &= -2;
+                }
+                if (Build.VERSION.SDK_INT >= 16) {
+                    uiOptions &= -3;
+                }
+                if (Build.VERSION.SDK_INT >= 19) {
+                    uiOptions &= -4097;
+                }
                 decorView.setSystemUiVisibility(uiOptions);
             }
         }
@@ -706,7 +725,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         } else if (action == 6) {
             this.mode = Mode.DRAG;
         }
-//        this.gestureDetector.onTouchEvent(motionEvent);
+        this.gestureDetector.onTouchEvent(motionEvent);
         this.scaleDetector.onTouchEvent(motionEvent);
         if ((this.mode == Mode.DRAG && this.scale >= 1.0f) || this.mode == Mode.ZOOM) {
             this.zoomLayout.requestDisallowInterceptTouchEvent(true);
@@ -730,34 +749,34 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         }, (long) (this.wait + 5000));
     }
 
-//    private class GestureDetector extends GestureDetector.SimpleOnGestureListener {
-//        private GestureDetector() {
-//        }
-//
-//        public boolean onSingleTapConfirmed(MotionEvent e) {
-//            if (VideoPlayer.this.isEnable) {
-//                VideoPlayer.this.hideDefaultControls();
-//                boolean unused = VideoPlayer.this.isEnable = false;
-//            } else {
-//                VideoPlayer.this.showDefaultControls();
-//                boolean unused2 = VideoPlayer.this.isEnable = true;
-//            }
-//            return super.onSingleTapConfirmed(e);
-//        }
-//
-//        public boolean onDoubleTap(MotionEvent event) {
-//            if (event.getX() < ((float) (VideoPlayer.this.sWidth / 2))) {
-//                VideoPlayer.this.intLeft = true;
-//                VideoPlayer.this.intRight = false;
-//                VideoPlayer.this.videoView.seekTo(VideoPlayer.this.videoView.getCurrentPosition() - 20000);
-//                Toast.makeText(VideoPlayer.this, "-20sec", 0).show();
-//            } else if (event.getX() > ((float) (VideoPlayer.this.sWidth / 2))) {
-//                VideoPlayer.this.intLeft = false;
-//                VideoPlayer.this.intRight = true;
-//                VideoPlayer.this.videoView.seekTo(VideoPlayer.this.videoView.getCurrentPosition() + 20000);
-//                Toast.makeText(VideoPlayer.this, "+20sec", 0).show();
-//            }
-//            return super.onDoubleTap(event);
-//        }
-//    }
+    private class GestureDetector extends android.view.GestureDetector.SimpleOnGestureListener {
+        private GestureDetector() {
+        }
+
+        public boolean onSingleTapConfirmed(MotionEvent e) {
+            if (VideoPlayer.this.isEnable) {
+                VideoPlayer.this.hideDefaultControls();
+                boolean unused = VideoPlayer.this.isEnable = false;
+            } else {
+                VideoPlayer.this.showDefaultControls();
+                boolean unused2 = VideoPlayer.this.isEnable = true;
+            }
+            return super.onSingleTapConfirmed(e);
+        }
+
+        public boolean onDoubleTap(MotionEvent event) {
+            if (event.getX() < ((float) (VideoPlayer.this.sWidth / 2))) {
+                VideoPlayer.this.intLeft = true;
+                VideoPlayer.this.intRight = false;
+                VideoPlayer.this.videoView.seekTo(VideoPlayer.this.videoView.getCurrentPosition() - 20000);
+                Toast.makeText(VideoPlayer.this, "-20sec", Toast.LENGTH_SHORT).show();
+            } else if (event.getX() > ((float) (VideoPlayer.this.sWidth / 2))) {
+                VideoPlayer.this.intLeft = false;
+                VideoPlayer.this.intRight = true;
+                VideoPlayer.this.videoView.seekTo(VideoPlayer.this.videoView.getCurrentPosition() + 20000);
+                Toast.makeText(VideoPlayer.this, "+20sec", Toast.LENGTH_SHORT).show();
+            }
+            return super.onDoubleTap(event);
+        }
+    }
 }

@@ -24,7 +24,7 @@
     <string name="_10_videos">"10 "</string>
     <string name="long_text">Long Text</string>
     <string name="lock">Lock</string>
-    <string name="audio_sub"><![CDATA[Audio &amp; Subtitle]]></string>
+    <string name="audio_sub">Audio &amp; Subtitle</string>
     <string name="rotate">Rotate</string>
     <string name="unlock_controls">Unlock Controls?</string>
     <string name="screen_locked">Screen Locked</string>
