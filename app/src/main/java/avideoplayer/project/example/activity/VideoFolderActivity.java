@@ -1,8 +1,18 @@
 package avideoplayer.project.example.activity;
 
+import android.content.ContentUris;
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.PorterDuff;
+import android.graphics.PorterDuffXfermode;
+import android.graphics.drawable.ColorDrawable;
+import android.graphics.drawable.Drawable;
+import android.media.MediaScannerConnection;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.MediaStore;
@@ -11,15 +21,23 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.CheckBox;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SearchView;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+
+import com.google.android.material.snackbar.Snackbar;
+
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Locale;
@@ -40,8 +58,10 @@ public class VideoFolderActivity extends AppCompatActivity implements SwipeRefre
     SwipeRefreshLayout swipeRefreshLayout;
     Toolbar toolbar;
     ArrayList<VideoFiles> videoFilesArrayList = new ArrayList<>();
+    ArrayList<Uri> uris=new ArrayList<>();
     VideoFolderAdapter videoFolderAdapter;
-
+    LinearLayout parentLayout;
+    Paint mClearPaint;
     /* access modifiers changed from: protected */
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,6 +74,7 @@ public class VideoFolderActivity extends AppCompatActivity implements SwipeRefre
         this.counterText = (TextView) findViewById(R.id.counter_text_view);
         this.recyclerView = (RecyclerView) findViewById(R.id.video_folder_RecyclerView);
         this.swipeRefreshLayout = (SwipeRefreshLayout) findViewById(R.id.refresh_file);
+        parentLayout=findViewById(R.id.video_folder_parent_layout);
         this.myFolderName = getIntent().getStringExtra("folderName");
         loadVideos();
         this.swipeRefreshLayout.setOnRefreshListener(this);
@@ -67,6 +88,7 @@ public class VideoFolderActivity extends AppCompatActivity implements SwipeRefre
             this.recyclerView.setHasFixedSize(true);
             this.recyclerView.setDrawingCacheEnabled(true);
             this.recyclerView.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_AUTO);
+            new ItemTouchHelper(simpleCallback).attachToRecyclerView(recyclerView);
             this.recyclerView.setAdapter(this.videoFolderAdapter);
             this.recyclerView.setLayoutManager(new LinearLayoutManager(this, RecyclerView.VERTICAL, false));
             this.recyclerView.setHasFixedSize(true);
@@ -166,6 +188,97 @@ public class VideoFolderActivity extends AppCompatActivity implements SwipeRefre
         return list;
     }
 
+    //to swipe delete
+    ItemTouchHelper.SimpleCallback simpleCallback=new ItemTouchHelper.SimpleCallback(0,ItemTouchHelper.LEFT) {
+        @Override
+        public boolean onMove(@NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, @NonNull RecyclerView.ViewHolder target) {
+            return false;
+        }
+
+        @Override
+        public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int direction) {
+            int position=viewHolder.getAdapterPosition();
+            selection_ArrayList.add(videoFilesArrayList.get(position));
+            videoFolderAdapter.removeItem(position);
+            Snackbar snackbar=Snackbar.make(parentLayout,"are you sure..",Snackbar.LENGTH_INDEFINITE);
+            snackbar.setAction("Yes", new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    Thread thread=new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            boolean isDeleted=selectedFile(selection_ArrayList, true);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (isDeleted)
+                                    {
+                                        selection_ArrayList.clear();
+                                        snackbar.dismiss();
+                                    }
+                                    else
+                                    {
+                                        Toast.makeText(VideoFolderActivity.this, "Delete Fail", Toast.LENGTH_SHORT).show();
+                                    }
+                                }
+                            });
+
+
+                        }
+                    });
+                    thread.start();
+
+                }
+            });
+            snackbar.show();
+            snackbar.setActionTextColor(Color.RED);
+        }
+
+        @Override
+        public void onChildDraw(@NonNull Canvas c, @NonNull RecyclerView recyclerView, @NonNull RecyclerView.ViewHolder viewHolder, float dX, float dY, int actionState, boolean isCurrentlyActive) {
+            super.onChildDraw(c, recyclerView, viewHolder, dX, dY, actionState, isCurrentlyActive);
+            ColorDrawable mBackground;
+            int backgroundColor;
+            Drawable deleteDrawable;
+            int intrinsicwidth;
+            int intrinsicheight;
+            mBackground=new ColorDrawable();
+            backgroundColor=Color.parseColor("#b80f0a");
+            mClearPaint=new Paint();
+            mClearPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+            deleteDrawable=ContextCompat.getDrawable(VideoFolderActivity.this,R.drawable.delete);
+            intrinsicwidth=deleteDrawable.getIntrinsicWidth();
+            intrinsicheight=deleteDrawable.getIntrinsicHeight();
+            View itemView=viewHolder.itemView;
+            int itemHeight=itemView.getHeight();
+            boolean isCanceled=dX==0 &&  !isCurrentlyActive;
+            if (isCanceled)
+            {
+                clearCanvas(c,itemView.getRight()+dX,(float) itemView.getTop(),
+                        (float)itemView.getRight(),(float) itemView.getBottom());
+                super.onChildDraw(c,recyclerView,viewHolder,dX,dY,actionState,isCurrentlyActive);
+                return;
+            }
+            mBackground.setColor(backgroundColor);
+            mBackground.setBounds(itemView.getRight()+(int) dX,itemView.getTop(),
+                    itemView.getRight(),itemView.getBottom());
+            mBackground.draw(c);
+            int deleteIconTop=itemView.getTop() +(itemHeight-intrinsicheight)/2;
+            int deleteIconMargin=(itemHeight-intrinsicheight)/2;
+            int deleteIconLeft= itemView.getRight() - deleteIconMargin-intrinsicwidth;
+            int deleteIconRight= itemView.getRight() - deleteIconMargin;
+            int deleteIconBottom= deleteIconTop +intrinsicheight;
+
+            deleteDrawable.setBounds(deleteIconLeft,deleteIconTop,deleteIconRight,deleteIconBottom);
+            deleteDrawable.draw(c);
+            super.onChildDraw(c,recyclerView,viewHolder,dX,dY,actionState,isCurrentlyActive);
+
+        }
+    };
+
+    private void clearCanvas(Canvas c, Float left, Float top, Float right, Float bottom) {
+        c.drawRect(left,top,right,bottom,mClearPaint);
+    }
 
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.search_more, menu);
@@ -288,7 +401,41 @@ public class VideoFolderActivity extends AppCompatActivity implements SwipeRefre
         TextView textView = this.counterText;
         textView.setText(counter2 + " item Selected");
     }
+    //to Choose and delete Multiple Files
+    private boolean selectedFile(ArrayList<VideoFiles> list, boolean canIDelete) {
+        for (int i = 0; i < list.size(); i++) {
+            String id = list.get(i).getId();
+            String path = list.get(i).getPath();
+            uris.add(Uri.parse(path));
+            if (canIDelete) {
+                Uri contentUris = ContentUris
+                        .withAppendedId(MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+                                , Long.parseLong(id));
+                File file = new File(path);
+                boolean isDeleted = file.delete();
+                if (isDeleted) {
+                    getApplicationContext().getContentResolver().delete(contentUris,
+                            null, null);
+                }
+            }
+        }
 
+        if (!canIDelete) {
+            MediaScannerConnection.scanFile(getApplicationContext(), new String[]{String.valueOf(uris)},
+                    null, new MediaScannerConnection.OnScanCompletedListener() {
+                        @Override
+                        public void onScanCompleted(String path, Uri uri) {
+                            Intent intent = new Intent(Intent.ACTION_SEND_MULTIPLE);
+                            intent.setType("video/*");
+                            intent.putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris);
+                            intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
+                            startActivity(Intent.createChooser(intent, "share"));
+                        }
+                    });
+        }
+
+        return true;
+    }
     public void onBackPressed() {
         if (!this.is_not_in_action_mode) {
             clearActionMode();

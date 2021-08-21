@@ -1,6 +1,7 @@
 package avideoplayer.project.example.adapter;
 
 
+import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.content.ContentUris;
@@ -53,7 +54,7 @@ public class VideoFolderAdapter extends RecyclerView.Adapter<VideoFolderAdapter.
         return new MyViewHolder(inflate, this.videoFolderActivity);
     }
 
-    public void onBindViewHolder(MyViewHolder holder, final int position) {
+    public void onBindViewHolder(MyViewHolder holder, @SuppressLint("RecyclerView") final int position) {
         holder.title.setText(foderVideoFiles.get(position).getTitle());
         Glide.with(this.mcontext).load(foderVideoFiles.get(position).getPath()).into(holder.thumbnail);
         TextView textView = holder.resolution;
@@ -166,6 +167,11 @@ public class VideoFolderAdapter extends RecyclerView.Adapter<VideoFolderAdapter.
         notifyDataSetChanged();
     }
 
+    public void removeItem(int position)
+    {
+        foderVideoFiles.remove(position);
+        notifyItemRemoved(position);
+    }
     /* access modifiers changed from: private */
     public void deleteFiles(final int position, final View v) {
         final AlertDialog.Builder alertbox = new AlertDialog.Builder(this.mcontext);

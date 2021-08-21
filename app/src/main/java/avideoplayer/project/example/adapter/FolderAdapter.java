@@ -62,9 +62,7 @@ public class FolderAdapter extends RecyclerView.Adapter<FolderAdapter.MyHolder> 
     /* access modifiers changed from: package-private */
     public int numberOfFiles(String folderName2) {
         int countFiles = 0;
-        Iterator<VideoFiles> it = this.videoFiles.iterator();
-        while (it.hasNext()) {
-            VideoFiles videoFiles2 = it.next();
+        for (VideoFiles videoFiles2 : this.videoFiles) {
             if (videoFiles2.getPath().substring(0, videoFiles2.getPath().lastIndexOf("/")).endsWith(folderName2)) {
                 countFiles++;
             }
