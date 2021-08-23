@@ -29,5 +29,6 @@
     <string name="unlock_controls">Unlock Controls?</string>
     <string name="screen_locked">Screen Locked</string>
     <string name="tap_to_unlock">Tap to Unlock</string>
+    <string name="_1x">1x</string>
 
 </resources>

@@ -11,6 +11,7 @@ import android.content.res.Configuration;
 import android.graphics.Point;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
+import android.media.PlaybackParams;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -73,6 +74,8 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
     public LinearLayout fourTwo;
     GestureDetectorCompat gestureDetector;
     private ImageButton goBack;
+    /*Image Button to Skip to Next and Previous Video*/
+    ImageButton skiptoNext,skiptopPrevious;
     boolean intLeft;
     boolean intRight;
     /* access modifiers changed from: private */
@@ -80,7 +83,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
     private boolean isOpen = true;
     private int lastPosition;
     private float lastScaleFactor = 0.0f;
-    private LinearLayout lockScreen;
+    private ImageView lockScreen;
     private TextView lockTextOne;
     private TextView lockTextTwo;
     private Mode mode = Mode.NONE;
@@ -98,7 +101,9 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
     private ImageButton rewind;
     Animation rotateIn;
     Animation rotateOut;
-    private LinearLayout rotation;
+    private ImageView rotation;
+    //An image Button  to handle Volume
+    private ImageButton volume;
     /* access modifiers changed from: private */
     public int sWidth;
     private float scale = 1.0f;
@@ -120,7 +125,13 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
     /* access modifiers changed from: private */
     public int wait = 0;
     RelativeLayout zoomLayout;
-
+    /*
+    * Variables for share button
+    * speed and floating
+    * */
+    private ImageView shareBtn;
+    private ImageButton floatingBtn;
+    private TextView speedBtn;
 
 
     private enum Mode {
@@ -183,12 +194,12 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         this.forward = (ImageButton) findViewById(R.id.videoView_forward);
         this.progressBar = (SeekBar) findViewById(R.id.videoView_brightness);
         this.brightnessImage = (ImageView) findViewById(R.id.videoView_brightness_image);
-        this.lockScreen = (LinearLayout) findViewById(R.id.videoView_lock_screen);
+        this.lockScreen = (ImageView) findViewById(R.id.videoView_lock_screen);
         this.fiveOne = (LinearLayout) findViewById(R.id.video_five_child_layout);
         this.lockTextOne = (TextView) findViewById(R.id.videoView_lock_text);
         this.lockTextTwo = (TextView) findViewById(R.id.videoView_lock_text_two);
-        this.rotation = (LinearLayout) findViewById(R.id.videoView_rotation);
-        this.track = (LinearLayout) findViewById(R.id.videoView_track);
+        this.rotation = (ImageView) findViewById(R.id.videoView_rotation);
+//        this.track = (LinearLayout) findViewById(R.id.videoView_track);
         this.goBack.setOnClickListener(this);
         this.more.setOnClickListener(this);
         this.playPauseBtn.setOnClickListener(this);
@@ -199,6 +210,63 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         this.five.setOnClickListener(this);
         this.rotation.setOnClickListener(this);
         this.zoomLayout.setOnTouchListener(this);
+        volume=(ImageButton)findViewById(R.id.volume_btn);
+        skiptoNext=(ImageButton)findViewById(R.id.skip_next);
+        skiptopPrevious=(ImageButton)findViewById(R.id.skip_previous);
+        shareBtn=(ImageView) findViewById(R.id.videoView_share_screen);
+        floatingBtn=(ImageButton)findViewById(R.id.floating_window);
+        speedBtn=(TextView)findViewById(R.id.speedBtn);
+        MediaPlayer mMediaPlayer = new MediaPlayer();
+        //        preparing Media Player
+        mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener(){
+            @RequiresApi(api = Build.VERSION_CODES.M)
+            public void onPrepared(MediaPlayer var1) {
+                PlaybackParams params = mMediaPlayer.getPlaybackParams();
+                params.setSpeed(1.0f);
+                mMediaPlayer.setPlaybackParams(params);
+            }
+        });
+
+        //Set the speed
+        speedBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+        //Share the video
+        shareBtn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Uri uri = Uri.parse(VideoFolderAdapter.foderVideoFiles.get(position).getPath());
+                Intent shareIntent = new Intent("android.intent.action.SEND");
+                shareIntent.setType("video/*");
+                shareIntent.putExtra("android.intent.extra.STREAM", uri);
+                startActivity(Intent.createChooser(shareIntent, "share video via"));
+                Toast.makeText(VideoPlayer.this, "Loading...", Toast.LENGTH_SHORT).show();
+            }
+        });
+        //To handle Volume
+        volume.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                final PopupMenu popupMenu = new PopupMenu(VideoPlayer.this, v);
+                VideoPlayer.this.handleVolume();
+                popupMenu.dismiss();
+            }
+        });
+        skiptoNext.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                nextVideo();
+            }
+        });
+        skiptopPrevious.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                previousVideo();
+            }
+        });
         this.gestureDetector = new GestureDetectorCompat(getApplicationContext(), new GestureDetector());
         this.scaleDetector = new ScaleGestureDetector(getApplicationContext(), this);
         this.rotateIn = AnimationUtils.loadAnimation(this, R.anim.rotate_in);
@@ -210,13 +278,13 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
             this.videoView.requestFocus();
             this.videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
                 public void onPrepared(final MediaPlayer mp) {
-                    VideoPlayer.this.seekBar.setMax(VideoPlayer.this.videoView.getDuration());
-                    VideoPlayer.this.videoView.start();
-                    VideoPlayer.this.track.setOnClickListener(new View.OnClickListener() {
-                        public void onClick(View v) {
-                            VideoPlayer.this.checkMultiAudioTrack(mp);
-                        }
-                    });
+                    seekBar.setMax(VideoPlayer.this.videoView.getDuration());
+                    videoView.start();
+//                    track.setOnClickListener(new View.OnClickListener() {
+//                        public void onClick(View v) {
+//                            VideoPlayer.this.checkMultiAudioTrack(mp);
+//                        }
+//                    });
                     VideoPlayer.this.more.setOnClickListener(new View.OnClickListener() {
                         public void onClick(View v) {
                             int unused = VideoPlayer.this.wait = 5000;
@@ -239,6 +307,33 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         changeBrightnessMode();
         checkDeviceState();
         autoHideControls();
+    }
+
+    private void previousVideo() {
+        if (position>=1) {
+            position=position-1;
+            String path = VideoFolderAdapter.foderVideoFiles.get(this.position).getPath();
+            if (path != null) {
+                videoView.setVideoPath(path);
+            }
+        }
+        else {
+            Toast.makeText(VideoPlayer.this, "No More Previous Video", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void nextVideo() {
+        if (position!=VideoFolderAdapter.foderVideoFiles.size()-1) {
+            position=position+1;
+            String path = VideoFolderAdapter.foderVideoFiles.get(this.position).getPath();
+            if (path != null) {
+
+                videoView.setVideoPath(path);
+            }
+        }
+        else {
+            Toast.makeText(VideoPlayer.this, "No More Video Next", Toast.LENGTH_SHORT).show();
+        }
     }
 
     private void checkDeviceState() {
@@ -318,7 +413,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         ArrayList<Integer> audioTracksIndex = new ArrayList<>();
         for (int i = 0; i < trackInfos.length; i++) {
             if (trackInfos[i].getTrackType() == MediaPlayer.TrackInfo.MEDIA_TRACK_TYPE_AUDIO) {
-                audioTracksIndex.add(Integer.valueOf(i));
+                audioTracksIndex.add(i);
             }
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -335,9 +430,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
             }
         }).setPositiveButton((CharSequence) "Ok", (DialogInterface.OnClickListener) new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
-                if (Build.VERSION.SDK_INT >= 21) {
-                    mediaPlayer.getSelectedTrack(which);
-                }
+                mediaPlayer.getSelectedTrack(which);
                 mediaPlayer.start();
                 Toast.makeText(VideoPlayer.this, "we are working on that :)", Toast.LENGTH_LONG).show();
                 dialog.dismiss();
@@ -542,18 +635,16 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         popupMenu.show();
         popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
             public boolean onMenuItemClick(MenuItem item) {
-                switch (item.getItemId()) {
-                    case R.id.video_player_speed_options /*2131231190*/:
-                        VideoPlayer.this.setPlayBackSpeed(mp);
-                        popupMenu.dismiss();
-                        return true;
-                    case R.id.video_player_volume_options /*2131231191*/:
-                        VideoPlayer.this.handleVolume();
-                        popupMenu.dismiss();
-                        return true;
-                    default:
-                        return true;
+                if (item.getItemId() == R.id.video_player_speed_options) { /*2131231190*/
+                    VideoPlayer.this.setPlayBackSpeed(mp);
+                    popupMenu.dismiss();
+                    return true;
+//                    case R.id.video_player_volume_options /*2131231191*/:
+//                        VideoPlayer.this.handleVolume();
+//                        popupMenu.dismiss();
+//                        return true;
                 }
+                return true;
             }
         });
     }
@@ -697,6 +788,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
             this.playPauseBtn.setImageDrawable(getResources().getDrawable(R.drawable.netflix_pause_button));
         }
         this.videoView.start();
+
         super.onStart();
     }
 
