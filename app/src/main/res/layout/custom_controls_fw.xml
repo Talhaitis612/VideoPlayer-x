@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:id="@+id/videoView_one_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center"
+        android:orientation="horizontal"
+        android:visibility="visible"
+        android:layout_marginEnd="10dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+
+        <TextView
+            android:id="@+id/videoView_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:maxLines="2"
+            android:text="\t"
+            android:textColor="@color/white" />
+        <ImageButton
+            android:id="@+id/closeBtn"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_weight="0"
+            android:background="@drawable/ic_close" />
+
+
+    </LinearLayout>
+
+
+    <LinearLayout
+        android:id="@+id/videoView_four_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@+id/videoView_one_layout"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:visibility="visible">
+
+        <ImageButton
+            android:id="@+id/skip_previous"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_weight="0"
+            android:background="@android:color/transparent"
+            android:src="@drawable/exo_ic_skip_previous" />
+
+        <ImageButton
+            android:id="@+id/pausePlayButton"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:layout_weight="1"
+            android:background="@android:color/transparent"
+            android:gravity="center"
+            android:src="@drawable/exo_icon_pause" />
+
+        <ImageButton
+            android:id="@+id/skip_next"
+            android:layout_width="50dp"
+            android:layout_height="60dp"
+            android:layout_weight="0"
+            android:background="@android:color/transparent"
+            android:src="@drawable/exo_ic_skip_next" />
+    </LinearLayout>
+
+<LinearLayout
+    android:id="@+id/fullScreenLayout"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_marginEnd="10dp"
+    android:layout_alignParentEnd="true"
+    android:layout_alignParentBottom="true"
+    >
+    <ImageButton
+        android:id="@+id/fullScreenBtn"
+        android:layout_width="35dp"
+        android:layout_height="35dp"
+        android:layout_gravity="end"
+        android:background="@drawable/exo_controls_fullscreen_enter"
+        android:layout_marginTop="10dp"
+        android:contentDescription="@string/full_screen" />
+</LinearLayout>
+
+
+
+</RelativeLayout>

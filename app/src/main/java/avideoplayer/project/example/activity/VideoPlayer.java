@@ -1,5 +1,6 @@
 package avideoplayer.project.example.activity;
 
+import android.app.ActivityManager;
 import android.app.Dialog;
 import android.app.PictureInPictureParams;
 import android.content.Context;
@@ -11,7 +12,6 @@ import android.content.res.Configuration;
 import android.graphics.Point;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
-import android.media.PlaybackParams;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -19,7 +19,6 @@ import android.os.Handler;
 import android.provider.Settings;
 import android.util.DisplayMetrics;
 import android.view.Display;
-import android.view.GestureDetector;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
@@ -48,6 +47,7 @@ import java.util.ArrayList;
 
 import avideoplayer.project.example.R;
 import avideoplayer.project.example.adapter.VideoFolderAdapter;
+import avideoplayer.project.example.service.FloatingWidowService;
 
 public class VideoPlayer extends AppCompatActivity implements View.OnClickListener, ScaleGestureDetector.OnScaleGestureListener,View.OnTouchListener{
     private static final String KEY_POSITION = "KEY_POSITION";
@@ -133,7 +133,6 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
     private ImageButton floatingBtn;
     private TextView speedBtn;
 
-
     private enum Mode {
         NONE,
         DRAG,
@@ -176,7 +175,6 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         this.videoView = (VideoView) findViewById(R.id.video_view);
         TextView textView = (TextView) findViewById(R.id.videoView_title);
         this.title = textView;
-        textView.setText(VideoFolderAdapter.foderVideoFiles.get(this.position).getTitle());
         this.goBack = (ImageButton) findViewById(R.id.videoView_go_back);
         this.more = (ImageButton) findViewById(R.id.videoView_more);
         this.zoomLayout = (RelativeLayout) findViewById(R.id.zoom_layout);
@@ -216,24 +214,30 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         shareBtn=(ImageView) findViewById(R.id.videoView_share_screen);
         floatingBtn=(ImageButton)findViewById(R.id.floating_window);
         speedBtn=(TextView)findViewById(R.id.speedBtn);
-        MediaPlayer mMediaPlayer = new MediaPlayer();
-        //        preparing Media Player
-        mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener(){
-            @RequiresApi(api = Build.VERSION_CODES.M)
-            public void onPrepared(MediaPlayer var1) {
-                PlaybackParams params = mMediaPlayer.getPlaybackParams();
-                params.setSpeed(1.0f);
-                mMediaPlayer.setPlaybackParams(params);
-            }
-        });
-
-        //Set the speed
-        speedBtn.setOnClickListener(new View.OnClickListener() {
+        //Floating Window Button
+        floatingBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                //First it confirms whether the 'Display over other apps' permission in given
+                if (checkOverlayDisplayPermission()) {
+                    //FloatingWindowGFG service is started
+                    String path=VideoFolderAdapter.foderVideoFiles.get(position).getPath();
+                    Intent intent=new Intent(VideoPlayer.this, FloatingWidowService.class);
+                    intent.putExtra("videoPath",path);
+                    startService(intent);
+                    //The MainActivity closes here
+                    finish();
+                } else {
+                    //If permission is not given, it shows the AlertDialog box and
+                    //redirects to the Settings
+                    requestOverlayDisplayPermission();
+                }
+
 
             }
         });
+        //Set the speed
+        speedBtn.setOnClickListener(this);
         //Share the video
         shareBtn.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -264,6 +268,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         skiptopPrevious.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                setDefault();
                 previousVideo();
             }
         });
@@ -274,6 +279,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         this.playPauseAnim = AnimationUtils.loadAnimation(this, R.anim.fade);
         String path = VideoFolderAdapter.foderVideoFiles.get(this.position).getPath();
         if (path != null) {
+            textView.setText(VideoFolderAdapter.foderVideoFiles.get(this.position).getTitle());
             this.videoView.setVideoPath(path);
             this.videoView.requestFocus();
             this.videoView.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
@@ -285,6 +291,7 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
 //                            VideoPlayer.this.checkMultiAudioTrack(mp);
 //                        }
 //                    });
+
                     VideoPlayer.this.more.setOnClickListener(new View.OnClickListener() {
                         public void onClick(View v) {
                             int unused = VideoPlayer.this.wait = 5000;
@@ -296,7 +303,14 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
                             VideoPlayer.this.videoView.start();
                         }
                     });
+                VideoPlayer.this.speedBtn.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        setPlayBackSpeed(mp);
+                    }
+                });
                 }
+
             });
         } else {
             Toast.makeText(this, "Fail to load Video", Toast.LENGTH_SHORT).show();
@@ -307,32 +321,51 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         changeBrightnessMode();
         checkDeviceState();
         autoHideControls();
+        //If the app is started again while the floating window service is running
+        //then the floating window service will stop
+        if (isMyServiceRunning()) {
+            //onDestroy() method in FloatingWindowGFG class will be called here
+            stopService(new Intent(VideoPlayer.this, FloatingWidowService.class));
+        }
     }
 
-    private void previousVideo() {
+    public void previousVideo() {
         if (position>=1) {
             position=position-1;
             String path = VideoFolderAdapter.foderVideoFiles.get(this.position).getPath();
             if (path != null) {
                 videoView.setVideoPath(path);
+
             }
         }
         else {
-            Toast.makeText(VideoPlayer.this, "No More Previous Video", Toast.LENGTH_SHORT).show();
+            position=VideoFolderAdapter.foderVideoFiles.size()-1;
+            String path = VideoFolderAdapter.foderVideoFiles.get(this.position).getPath();
+            if (path != null) {
+                videoView.setVideoPath(path);
+
+            }
         }
     }
 
-    private void nextVideo() {
+    public void  nextVideo() {
+
         if (position!=VideoFolderAdapter.foderVideoFiles.size()-1) {
             position=position+1;
             String path = VideoFolderAdapter.foderVideoFiles.get(this.position).getPath();
             if (path != null) {
-
+                setDefault();
                 videoView.setVideoPath(path);
             }
         }
         else {
-            Toast.makeText(VideoPlayer.this, "No More Video Next", Toast.LENGTH_SHORT).show();
+            position=0;
+            String path = VideoFolderAdapter.foderVideoFiles.get(this.position).getPath();
+            if (path != null) {
+                setDefault();
+                videoView.setVideoPath(path);
+
+            }
         }
     }
 
@@ -359,6 +392,13 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
     private View zoomLayout(int i) {
         return this.videoView;
     }
+     //Set Everything to default as user goes forth or back
+    public void setDefault()
+    {
+        speedBtn.setText(R.string.speed_1x);
+        playPauseBtn.setImageResource(R.drawable.netflix_pause_button);
+    }
+
 
     /* access modifiers changed from: private */
     public void setPlayBackSpeed(final MediaPlayer mediaPlayer) {
@@ -367,44 +407,71 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
         ((RadioButton) dialog.findViewById(R.id.slow_speed_one)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
-                MediaPlayer mediaPlayer = new MediaPlayer();
+//                MediaPlayer mediaPlayer = mediaPlayer;
+                ((RadioButton) dialog.findViewById(R.id.slow_speed_one)).setChecked(true);
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(0.5f));
                 dialog.dismiss();
+                speedBtn.setText(R.string.speed_0_5x);
             }
         });
         ((RadioButton) dialog.findViewById(R.id.slow_speed_two)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
-                MediaPlayer mediaPlayer = new MediaPlayer();
+//                MediaPlayer mediaPlayer = new MediaPlayer();
+                ((RadioButton) dialog.findViewById(R.id.slow_speed_two)).setChecked(true);
+
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(0.75f));
                 dialog.dismiss();
+                speedBtn.setText(R.string.speed_0_75x);
+
             }
         });
         ((RadioButton) dialog.findViewById(R.id.speed_normal)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
-                MediaPlayer mediaPlayer = new MediaPlayer();
+//                MediaPlayer mediaPlayer = new MediaPlayer();
+                ((RadioButton) dialog.findViewById(R.id.speed_normal)).setChecked(true);
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(1.0f));
                 dialog.dismiss();
+                speedBtn.setText(R.string.speed_1x);
+
             }
         });
         ((RadioButton) dialog.findViewById(R.id.fast_speed_one)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
-                MediaPlayer mediaPlayer = new MediaPlayer();
+//                MediaPlayer mediaPlayer = new MediaPlayer();
+                ((RadioButton) dialog.findViewById(R.id.fast_speed_one)).setChecked(true);
                 mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(1.25f));
                 dialog.dismiss();
+                speedBtn.setText(R.string.speed_1_25x);
+
             }
         });
         ((RadioButton) dialog.findViewById(R.id.fast_speed_two)).setOnClickListener(new View.OnClickListener() {
             @RequiresApi(api = Build.VERSION_CODES.M)
             public void onClick(View v) {
-                MediaPlayer mediaPlayer = new MediaPlayer();
-                mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(1.75f));
+//                MediaPlayer mediaPlayer = new MediaPlayer();
+                ((RadioButton) dialog.findViewById(R.id.fast_speed_two)).setChecked(true);
+                mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(1.5f));
                 dialog.dismiss();
+                speedBtn.setText(R.string.speed_1_5x);
+
+            }
+        });
+        ((RadioButton) dialog.findViewById(R.id.fast_speed_three)).setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.M)
+            public void onClick(View v) {
+//                MediaPlayer mediaPlayer = new MediaPlayer();
+                ((RadioButton) dialog.findViewById(R.id.fast_speed_three)).setChecked(true);
+                mediaPlayer.setPlaybackParams(mediaPlayer.getPlaybackParams().setSpeed(2f));
+                dialog.dismiss();
+                speedBtn.setText(R.string.speed_2x);
+
             }
         });
         dialog.show();
+
     }
 
     /* access modifiers changed from: private */
@@ -839,6 +906,68 @@ public class VideoPlayer extends AppCompatActivity implements View.OnClickListen
                 boolean unused = VideoPlayer.this.isEnable = false;
             }
         }, (long) (this.wait + 5000));
+    }
+//Function to check if we have overlay permission
+
+    private boolean checkOverlayDisplayPermission() {
+        //Android Version is lesser than Marshmallow or the API is lesser than 23
+        //doesn't need 'Display over other apps' permission enabling.
+        if (Build.VERSION.SDK_INT > Build.VERSION_CODES.M) {
+            //If 'Display over other apps' is not enabled it will return false or else true
+            if (!Settings.canDrawOverlays(this)) {
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            return true;
+        }
+    }
+    //Ask for overLay Permission
+    private void requestOverlayDisplayPermission() {
+        //An AlertDialog is created
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        //This dialog can be closed, just by taping anywhere outside the dialog-box
+        builder.setCancelable(true);
+        //The title of the Dialog-box is set
+        builder.setTitle("Screen Overlay Permission Needed");
+        //The message of the Dialog-box is set
+        builder.setMessage("Enable 'Display over other apps' from System Settings.");
+        //The event of the Positive-Button is set
+        builder.setPositiveButton("Open Settings", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //The app will redirect to the 'Display over other apps' in Settings.
+                //This is an Implicit Intent. This is needed when any Action is needed to perform, here it is
+                //redirecting to an other app(Settings).
+                Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getPackageName()));
+                //This method will start the intent. It takes two parameter, one is the Intent and the other is
+                //an requestCode Integer. Here it is -1.
+                startActivityForResult(intent, RESULT_OK);
+            }
+        });
+        AlertDialog dialog;
+        dialog = builder.create();
+        //The Dialog will show in the screen
+        dialog.show();
+    }
+
+    private boolean isMyServiceRunning() {
+        //The ACTIVITY_SERVICE is needed to retrieve a ActivityManager for interacting with the global system
+        //It has a constant String value "activity".
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        //A loop is needed to get Service information that are currently running in the System.
+        //So ActivityManager.RunningServiceInfo is used. It helps to retrieve a
+        //particular service information, here its this service.
+        //getRunningServices() method returns a list of the services that are currently running
+        //and MAX_VALUE is 2147483647. So at most this many services can be returned by this method.
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            //If this service is found as a running, it will return true or else false.
+            if (FloatingWidowService.class.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private class GestureDetector extends android.view.GestureDetector.SimpleOnGestureListener {

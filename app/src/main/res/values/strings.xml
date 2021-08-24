@@ -30,5 +30,16 @@
     <string name="screen_locked">Screen Locked</string>
     <string name="tap_to_unlock">Tap to Unlock</string>
     <string name="_1x">1x</string>
+    <string name="speed_0_5x">0.5x</string>
+    <string name="speed_0_75x">0.75x</string>
+    <string name="speed_1x">1x</string>
+    <string name="speed_1_25x">1.25x</string>
+    <string name="speed_1_5x">1.5x</string>
+    <string name="speed_1_75x">1.75x</string>
+    <string name="speed_2x">2x</string>
+    <string name="skip_previous">skip_previous</string>
+    <string name="pausebutton">pauseButton</string>
+    <string name="skipnext">skipNext</string>
+    <string name="full_screen">full_screen</string>
 
 </resources>
